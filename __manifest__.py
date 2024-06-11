@@ -1,7 +1,4 @@
-"""Plugin description.
-
-This can be multiline text.
-"""
+"""Configure VSCode for a database and open its repository in the editor."""
 
 # --- Version information ------------------------------------------------------
 #
@@ -25,7 +22,7 @@ This can be multiline text.
 # or merged change.
 # ------------------------------------------------------------------------------
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 
 # --- Dependencies -------------------------------------------------------------
 # List other odev plugins from which this current plugin depends.
