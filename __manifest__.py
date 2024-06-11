@@ -25,7 +25,7 @@ This can be multiline text.
 # or merged change.
 # ------------------------------------------------------------------------------
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 # --- Dependencies -------------------------------------------------------------
 # List other odev plugins from which this current plugin depends.
@@ -38,4 +38,4 @@ __version__ = "1.0.0"
 # All plugins depend from odev core by default.
 # ------------------------------------------------------------------------------
 
-depends = []
+depends = ["odoo-ps/ps-tech-odev-editor-base"]
