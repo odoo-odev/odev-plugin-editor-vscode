@@ -4,6 +4,7 @@ from typing import cast
 
 from odev.common import progress, string
 from odev.common.console import console
+from odev.common.databases import LocalDatabase
 from odev.common.logging import logging
 from odev.common.python import PythonEnv
 
@@ -21,7 +22,10 @@ class VSCodeEditor(Editor):
 
     @property
     def command(self) -> str:
-        return f"{self._name} {self.workspace_path}"
+        if isinstance(self.database, LocalDatabase):
+            return f"{self._name} {self.workspace_path}"
+        else:
+            return super().command
 
     @property
     def workspace_directory(self) -> Path:
@@ -45,9 +49,12 @@ class VSCodeEditor(Editor):
 
     def configure(self):
         """Configure VSCode to work with the database."""
-        assert self.database.repository is not None
+        if not isinstance(self.database, LocalDatabase):
+            return logger.warning(
+                f"No local database associated with repository {self.git.name!r}, skipping VSCode configuration"
+            )
 
-        with progress.spinner(f"Configuring {self._display_name} for project {self.database.repository.full_name!r}"):
+        with progress.spinner(f"Configuring {self._display_name} for project {self.git.name!r}"):
             self.workspace_directory.mkdir(parents=True, exist_ok=True)
 
             missing_files = filter(
@@ -69,10 +76,12 @@ class VSCodeEditor(Editor):
                     f"Tasks: {self.tasks_path}",
                 ],
             )
-            logger.info(f"Created VSCode config for project {self.database.repository.full_name!r}\n{created_files}")
+            logger.info(f"Created VSCode config for project {self.git.name!r}\n{created_files}")
 
     def _create_workspace(self):
         """Create a workspace file for the project."""
+        assert isinstance(self.database, LocalDatabase)
+
         if self.workspace_path.is_file():
             return logger.debug("Workspace file already exists")
 
