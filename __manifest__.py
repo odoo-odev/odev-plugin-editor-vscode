@@ -22,7 +22,7 @@
 # or merged change.
 # ------------------------------------------------------------------------------
 
-__version__ = "1.0.3"
+__version__ = "1.1.0"
 
 # --- Dependencies -------------------------------------------------------------
 # List other odev plugins from which this current plugin depends.
@@ -35,4 +35,4 @@ __version__ = "1.0.3"
 # All plugins depend from odev core by default.
 # ------------------------------------------------------------------------------
 
-depends = ["odoo-ps/ps-tech-odev-editor-base"]
+depends = ["odoo-odev/odev-plugin-editor-base"]

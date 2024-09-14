@@ -8,7 +8,7 @@ from odev.common.databases import LocalDatabase
 from odev.common.logging import logging
 from odev.common.python import PythonEnv
 
-from odev.plugins.ps_tech_odev_editor_base.common.editor import Editor
+from odev.plugins.odev_plugin_editor_base.common.editor import Editor
 
 
 logger = logging.getLogger(__name__)
