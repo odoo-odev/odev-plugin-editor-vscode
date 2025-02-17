@@ -1,0 +1,55 @@
+{
+    "folders": [
+        {
+            "path": "{{ ODOO_PATH }}",
+            "name": "odoo"
+        },
+        {
+            "path": "..",
+            "name": "project",
+        }
+    ],
+    "settings": {
+        "odoo.db": "{{ DB_NAME }}",
+        "odoo.modules": "{{ COMMA_SEPERATED_ADDON_NAMES }}",
+        "odoo.testTags": "*",
+        "odoo.logLevel": "info",
+
+        "python.languageServer": "None",
+        "python.analysis.typeCheckingMode": "standard",
+        "python.analysis.extraPaths": [
+            "{{ ODOO_PATH }}/odoo",
+            "{{ ODOO_PATH }}/enterprise",
+        ],
+        "python.analysis.exclude": [
+            "{{ ODOO_PATH }}",
+        ],
+        "python.analysis.packageIndexDepths": [
+            {
+                "name": "odoo",
+                "depth": 2
+            }
+        ],
+        "python.autoComplete.extraPaths": [
+            "{{ ODOO_PATH }}/odoo",
+            "{{ ODOO_PATH }}/enterprise",
+        ],
+        "python.defaultInterpreterPath": "{{ VENV_PATH }}",
+
+        "editor.formatOnSave": false,
+        "editor.rulers": [
+            120,
+        ],
+
+        "search.exclude": {
+            "**/*.po*": true,
+            "**/LICENSE": true,
+            "**/README.md": true,
+        },
+
+        "terminal.integrated.cwd": "${workspaceFolder:project}",
+
+        "pythonPath": "{{ PYTHON_PATH }}",
+        "odevPath": "{{ ODEV_EXE_PATH }}",
+    }
+}

@@ -18,3 +18,5 @@ htmlcov
 # --- Odev plugins, loaded as submodules
 odev/plugins/*
 tests/plugins/*
+
+.venv
