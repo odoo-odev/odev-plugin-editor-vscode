@@ -36,14 +36,6 @@ class VSCodeEditor(Editor):
         )
 
     @property
-    def odoo_directory_posix(self) -> str:
-        """The path to the odoo directory which contains the odoo, enterprise & design themes."""
-        worktree = next(self.database.worktrees)
-        if not worktree:
-            return logger.error("Odoo directory doesn't seem to exist!")
-        return worktree.path.parent.as_posix()
-
-    @property
     def workspace_directory(self) -> Path:
         """The path to the workspace directory."""
         return self.path / ".vscode"
@@ -99,7 +91,7 @@ class VSCodeEditor(Editor):
         rendered_template = self._get_rendered_template(
             "code-workspace.jinja",
             DB_NAME=self.database.name,
-            ODOO_PATH=self.odoo_directory_posix,
+            ODOO_PATH=self.database.odev.worktrees_path / self.database.worktree,
             VENV_PATH=self.database.venv.python.as_posix(),
             PYTHON_PATH=PythonEnv().python.as_posix(),
             ODEV_EXE_PATH=self.database.odev.executable.readlink().as_posix(),
