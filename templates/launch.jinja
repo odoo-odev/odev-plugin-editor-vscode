@@ -1,0 +1,125 @@
+{
+    "configurations": [
+        {
+            "name": "Run",
+            "type": "debugpy",
+            "request": "launch",
+            "subProcess": true,
+            "justMyCode": true,
+            "program": "${config:odevPath}",
+            "cwd": "${workspaceFolder:project}",
+            "python": "${config:pythonPath}",
+            "args": [
+                "run",
+                "${config:odoo.db}",
+                "--log-level=${config:odoo.logLevel}",
+                "--dev=xml",
+                "--update=${config:odoo.modules}",
+                "--log-handler=odoo.addons.base.models.ir_attachment:WARNING",
+                "--limit-time-cpu=0",
+                "--limit-time-real=0",
+                "--max-cron-threads=1",
+            ]
+        },
+        {
+            "name": "Run without odev",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "./odoo/odoo-bin",
+            "cwd": "${workspaceFolder:odoo}",
+            "args": [
+                "--dev=xml",
+                "--database=${config:odoo.db}",
+                "--update=${config:odoo.modules}",
+                "--addons-path=odoo/addons,enterprise,design-themes,${workspaceFolder:project}",
+                "--log-level=${config:odoo.logLevel}",
+                "--limit-time-cpu=0",
+                "--limit-time-real=0",
+                "--max-cron-threads=1",
+            ]
+        },
+        {
+            "name": "Test",
+            "type": "debugpy",
+            "request": "launch",
+            "subProcess": true,
+            "justMyCode": true,
+            "program": "${config:odevPath}",
+            "cwd": "${workspaceFolder:project}",
+            "python": "${config:pythonPath}",
+            "args": [
+                "test",
+                "-v",
+                "${config:odoo.logLevel}",
+                "-t",
+                "${config:odoo.testTags}",
+                "-i",
+                "${config:odoo.modules}",
+                "-f",
+                "${config:odoo.db}",
+                "-p",
+                "8068",
+            ]
+        },
+        {
+            "name": "Test without odev",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "./odoo/odoo-bin",
+            "cwd": "${workspaceFolder:odoo}",
+            "preLaunchTask": "update modules (test db)",
+            "args": [
+                "--test-tags=${config:odoo.testTags}",
+                "--database=${config:odoo.db}_test",
+                "--addons-path=./odoo/addons,./enterprise,${workspaceFolder:project}",
+                "--log-level=${config:odoo.logLevel}",
+                "--limit-time-cpu=0",
+                "--limit-time-real=0",
+                "--stop-after-init",
+                "--max-cron-threads=0",
+                "-p",
+                "8067",
+            ]
+        },
+        {
+            "name": "Shell",
+            "type": "debugpy",
+            "request": "launch",
+            "subProcess": true,
+            "justMyCode": true,
+            "program": "${config:odevPath}",
+            "cwd": "${workspaceFolder:project}",
+            "python": "${config:pythonPath}",
+            "args": [
+                "shell",
+                "${config:odoo.db}",
+                "--update=${config:odoo.modules}",
+                "--log-level=${config:odoo.logLevel}",
+                "--dev=xml",
+                "--limit-time-cpu=0",
+                "--limit-time-real=0",
+                "--max-cron-threads=0",
+                "--no-http",
+            ]
+        },
+        {
+            "name": "Attach Remote",
+            "type": "debugpy",
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 5678
+            },
+            "pathMappings": [
+                {
+                    "remoteRoot": "/home/odoo/src/user",
+                    "localRoot": "${workspaceFolder:project}",
+                },
+                {
+                    "remoteRoot": "/home/odoo/src",
+                    "localRoot": "${workspaceFolder:odoo}",
+                }
+            ],
+        },
+    ]
+}

@@ -1,0 +1,41 @@
+{
+    "include": [
+        "**/*.js",
+        "**/*.d.ts",
+        "{{ ODOO_PATH }}/**/static/**/*.js", 
+        "{{ ODOO_PATH }}/**/static/**/*.d.ts"
+    ],
+    "exclude": [
+        "**/node_modules",
+        "**/setup",
+        "**/doc",
+        "**/lib/ace",
+        "**/lib/bootstrap",
+        "**/lib/Chart",
+        "**/lib/chartjs-adapter-luxon",
+        "**/lib/fullcalendar",
+        "**/lib/jquery",
+        "**/lib/luxon",
+        "**/lib/odoo_ui_icons",
+        "**/lib/pdfjs", 
+        "**/lib/popper",
+        "**/lib/qunit",
+        "**/lib/signature_pad",
+        "**/lib/stacktracejs",
+        "**/lib/zxing-library",
+        "**/l10n*",
+        "**/o_spreadsheet.js"
+    ],
+    "compilerOptions": {
+        "moduleResolution": "node",
+
+        "baseUrl": "{{ ODOO_PATH }}",
+
+        "target": "ES2022",
+        "noEmit": true,
+        "disableSizeLimit": true,
+
+        "paths":
+            {{ JS_MODULES_PATHS }}
+    }
+}
