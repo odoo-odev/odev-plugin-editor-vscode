@@ -1,0 +1,207 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "~Init Fresh DB",
+            "dependsOn": ["create fresh db"],
+            "problemMatcher": [],
+            "detail": "Creates a new database and initializes modules.",
+            "presentation": {
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "~Init Fresh Test DB",
+            "dependsOn": ["create fresh test db"],
+            "problemMatcher": [],
+            "detail": "Creates a new test database and initializes modules.",
+            "presentation": {
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "~Init DB From Template",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "copy db from template",
+                "init modules (main db)"
+            ],
+            "problemMatcher": [],
+            "detail": "Restores database from template, then initializes modules.",
+            "presentation": {
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "~Init Test DB From Template",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "copy test db from template",
+                "init modules (test db)"
+            ],
+            "problemMatcher": [],
+            "detail": "Restores test database from template, then initializes modules.",
+            "presentation": {
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "~Create Template From DB",
+            "dependsOn": ["create template from db"],
+            "problemMatcher": [],
+            "detail": "Creates a template from the main database.",
+            "presentation": {
+                "panel": "shared"
+            }
+        },
+
+        {
+            "label": "create fresh db",
+            "command": "odev",
+            "problemMatcher": [],
+            "args": [
+                "create",
+                "-f",
+                "-V",
+                "{{ DB_VERSION }}",
+                "${config:odoo.db}",
+                "--init=${config:odoo.modules}",
+                "--log-level=${config:odoo.logLevel}",
+                "--no-http",
+            ],
+            "presentation": {
+                "panel": "shared"
+            },
+        },
+        {
+            "label": "create fresh test db",
+            "command": "odev",
+            "problemMatcher": [],
+            "args": [
+                "create",
+                "-f",
+                "-V",
+                "{{ DB_VERSION }}",
+                "${config:odoo.db}_test",
+                "--init=${config:odoo.modules}",
+                "--log-level=${config:odoo.logLevel}",
+                "--no-http",
+            ],
+            "presentation": {
+                "panel": "shared"
+            },
+        },
+        {
+            "label": "create template from db",
+            "command": "odev",
+            "problemMatcher": [],
+            "args": [
+                "create",
+                "-T",
+                "-f",
+                "${config:odoo.db}",
+            ],
+            "presentation": {
+                "panel": "shared",
+                "reveal": "silent"
+            },
+        },
+        {
+            "label": "copy db from template",
+            "command": "odev",
+            "problemMatcher": [],
+            "args": [
+                "create",
+                "-t",
+                "${config:odoo.db}:template",
+                "-f",
+                "${config:odoo.db}",
+            ],
+            "presentation": {
+                "panel": "shared"
+            },
+        },
+        {
+            "label": "copy test db from template",
+            "command": "odev",
+            "problemMatcher": [],
+            "args": [
+                "create",
+                "-t",
+                "${config:odoo.db}:template",
+                "-f",
+                "${config:odoo.db}_test",
+            ],
+            "presentation": {
+                "panel": "shared"
+            },
+        },
+        {
+            "label": "init modules (main db)",
+            "command": "odev",
+            "problemMatcher": [],
+            "args": [
+                "run",
+                "${config:odoo.db}",
+                "--init=${config:odoo.modules}",
+                "--log-level=${config:odoo.logLevel}",
+                "--no-http",
+                "--stop-after-init",
+            ],
+            "presentation": {
+                "panel": "shared"
+            },
+        },
+        {
+            "label": "init modules (test db)",
+            "command": "odev",
+            "problemMatcher": [],
+            "args": [
+                "run",
+                "${config:odoo.db}_test",
+                "--init=${config:odoo.modules}",
+                "--log-level=${config:odoo.logLevel}",
+                "--no-http",
+                "--stop-after-init",
+            ],
+            "presentation": {
+                "panel": "shared"
+            },
+        },
+        {
+            "label": "update modules (test db)",
+            "command": "odev",
+            "problemMatcher": [],
+            "args": [
+                "run",
+                "${config:odoo.db}_test",
+                "--update=${config:odoo.modules}",
+                "--log-level=${config:odoo.logLevel}",
+                "--no-http",
+                "--stop-after-init",
+            ],
+            "presentation": {
+                "panel": "shared"
+            },
+        },
+        {
+            "label": "~SSH Tunnel for Debugging",
+            "type": "shell",
+            "command": "HOST=\"${input:sshTarget}\"; HOST=\"${HOST#ssh }\"; ssh $HOST \"grep -q 'debugpy.listen' /home/odoo/src/odoo/odoo/addons/base/__init__.py || printf '\\ntry:\\n    import debugpy\\n    debugpy.listen((\\\"127.0.0.1\\\", 5678))\\nexcept:\\n    pass\\n' >> /home/odoo/src/odoo/odoo/addons/base/__init__.py; odoosh-restart http\" && ssh -t -L 5678:127.0.0.1:5678 $HOST",
+            "problemMatcher": [],
+            "detail": "Open an SSH tunnel for remote debugging.",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "sshTarget",
+            "type": "promptString",
+            "description": "SSH Command or Host (e.g. ssh user@hostname or just user@hostname)",
+            "default": "odoo@localhost"
+        }
+    ]
+}

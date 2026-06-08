@@ -1,11 +1,18 @@
 import json
+import os
+import re
 from pathlib import Path
+
+from jinja2 import Environment, FileSystemLoader
 
 from odev.common import bash, progress, string
 from odev.common.databases import LocalDatabase
 from odev.common.logging import logging
 from odev.common.odoobin import OdoobinProcess
+from odev.common.python import PythonEnv
+
 from odev.plugins.odev_plugin_editor_base.common.editor import Editor
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,31 +26,57 @@ class VSCodeEditor(Editor):
     @property
     def display_name(self) -> str:
         """Also handle other editors derivated from VSCodium (e.g. Antigravity)."""
-        name = bash.execute(f"{self._name} --help | head -n 1 | awk '{{print $1}}'")
+        result = bash.execute(f"{self._name} --help", raise_on_error=False)
 
-        if name and name.stdout.strip():
-            return name.stdout.strip().capitalize().decode()
+        if result and result.stdout:
+            first_line = result.stdout.decode().splitlines()[0]
+            name = re.sub(r"\s+v?[\d.]+.*$", "", first_line).strip()
+
+            if name:
+                return name
 
         return self._display_name
+
+    @property
+    def process(self) -> OdoobinProcess:
+        """Odoo process backing the configuration.
+
+        Falls back to a version-based process when no local database exists, so that
+        repositories opened without a database (version-only) can still be configured.
+        """
+        if isinstance(self.database, LocalDatabase) and self.database.process:
+            return self.database.process
+        return OdoobinProcess(self.database, version=self.version).with_edition("enterprise")
 
     @property
     def command(self) -> str:
         return f"{self._name} {self.workspace_path}"
 
     @property
+    def templates(self) -> Environment:
+        return Environment(  # noqa: S701
+            loader=FileSystemLoader(self.database.odev.plugins_path / "odev_plugin_editor_vscode/templates")
+        )
+
+    @property
+    def odoo_path(self) -> Path:
+        """The path to the worktree holding the Odoo sources (odoo, enterprise, ...)."""
+        return self.database.odev.worktrees_path / self.process.worktree
+
+    @property
     def workspace_directory(self) -> Path:
         """The path to the workspace directory."""
-        return (
-            self.path / ".vscode"
-            if isinstance(self.database, LocalDatabase)
-            else self.path
-        )
+        return self.path / ".vscode" if isinstance(self.database, LocalDatabase) else self.path
+
+    @property
+    def workspace_name(self) -> str:
+        """The base name used for the workspace file."""
+        return self.database.name if isinstance(self.database, LocalDatabase) else str(self.version)
 
     @property
     def workspace_path(self) -> Path:
         """The path to the workspace file."""
-        name = self.database.name if isinstance(self.database, LocalDatabase) else str(self.version)
-        return self.workspace_directory / f"{name}.code-workspace"
+        return self.workspace_directory / f"{self.workspace_name}.code-workspace"
 
     @property
     def launch_path(self) -> Path:
@@ -63,129 +96,118 @@ class VSCodeEditor(Editor):
                 f"skipping {self.display_name} configuration"
             )
 
-        # We always want to update the configuration to ensure the Python environment is correct
-        # even if the workspace file already exists.
+        config_files = [self.workspace_path, self.launch_path, self.tasks_path, self.path / "jsconfig.json"]
+
+        if all(path.is_file() for path in config_files):
+            logger.debug(f"{self.display_name} config files already exist, skipping configuration")
+            return None
 
         with progress.spinner(f"Configuring {self.display_name} for project {self.git.name!r}"):
             self.workspace_directory.mkdir(parents=True, exist_ok=True)
 
-            created_files_list = []
-
-            if self._create_workspace():
-                created_files_list.append(f"Workspace: {self.workspace_path}")
-
+            self._create_workspace()
             self._create_launch()
             self._create_tasks()
-            created_files_list.extend([
-                f"Debugging: {self.launch_path}",
-                f"Tasks: {self.tasks_path}",
-            ])
+            self._create_jsconfig()
 
-            created_files = string.join_bullet(created_files_list)
+            created_files = string.join_bullet(
+                [
+                    f"Workspace: {self.workspace_path}",
+                    f"Launch: {self.launch_path}",
+                    f"Tasks: {self.tasks_path}",
+                ],
+            )
             logger.info(f"Created {self.display_name} config for project {self.git.name!r}\n{created_files}")
+        return None
 
-    def _create_workspace(self) -> bool:
+    def _get_rendered_template(self, template_name, **kwargs):
+        template = self.templates.get_template(template_name)
+        return template.render(kwargs)
+
+    @property
+    def workspace_folders(self) -> list[dict]:
+        """The multi-root workspace folders, depending on the configured layout.
+
+        - 'flat' (default): one top-level root per odoo worktree alongside the project.
+        - 'nested': a single 'odoo' root holding all worktrees as subfolders.
+        """
+        project_folder = {"path": "..", "name": "project"}
+        layout = self.database.odev.config.vscode.workspace_layout
+
+        if layout == "flat":
+            return [
+                project_folder,
+                *(
+                    {"path": worktree.path.as_posix(), "name": worktree.path.name}
+                    for worktree in self.process.odoo_worktrees
+                ),
+            ]
+
+        return [project_folder, {"path": self.odoo_path.as_posix(), "name": "odoo"}]
+
+    def _create_workspace(self):
         """Create a workspace file for the project."""
-        workspace_config = {}
-        if self.workspace_path.is_file():
-            try:
-                workspace_config = json.loads(self.workspace_path.read_text())
-            except Exception:
-                logger.warning(f"Could not load existing workspace file {self.workspace_path}")
-
-        if not workspace_config:
-            workspace_config = {
-                "folders": [],
-                "settings": {},
-            }
-
-        workspace_config["settings"]["terminal.integrated.cwd"] = self.path.as_posix()
-
-        process = (
-            self.database.process
-            if isinstance(self.database, LocalDatabase) and self.database.process
-            else OdoobinProcess(self.database, version=self.version).with_edition("enterprise")
+        rendered_template = self._get_rendered_template(
+            "code-workspace.jinja",
+            DB_NAME=self.workspace_name,
+            ODOO_PATH=self.odoo_path,
+            FOLDERS=json.dumps(self.workspace_folders, indent=4),
+            VENV_PATH=self.process.venv.python.as_posix(),
+            RUFF_PATH=(self.process.venv.path / "bin" / "ruff").as_posix(),
+            PYTHON_PATH=PythonEnv().python.as_posix(),
+            ODEV_EXE_PATH=self.database.odev.executable.with_name("main.py").as_posix(),
         )
-
-        if isinstance(self.database, LocalDatabase):
-            if {"path": ".."} not in workspace_config["folders"]:
-                workspace_config["folders"].append({"path": ".."})
-
-            python_path = process.venv.python.as_posix()
-            workspace_config["settings"]["python.defaultInterpreterPath"] = python_path
-            # Set interpreterPath as well for better compatibility with different editor versions
-            workspace_config["settings"]["python.interpreterPath"] = python_path
-
-            # Add extra paths for better autocompletion
-            extra_paths = [p.as_posix() for p in process.addons_paths if p.exists()]
-            workspace_config["settings"]["python.analysis.extraPaths"] = extra_paths
-            workspace_config["settings"]["python.autoComplete.extraPaths"] = extra_paths
-
-            # Force Ruff extension to use the binary from the venv
-            ruff_bin = (process.venv.path / "bin" / "ruff").as_posix()
-            workspace_config["settings"]["ruff.path"] = [ruff_bin]
-            workspace_config["settings"]["ruff.importStrategy"] = "fromEnvironment"
-
-        for worktree in process.odoo_worktrees:
-            worktree_path = {"path": worktree.path.as_posix()}
-            if worktree_path not in workspace_config["folders"]:
-                workspace_config["folders"].append(worktree_path)
-
-        self.workspace_path.write_text(json.dumps(workspace_config, indent=4))
-        return True
+        with open(self.workspace_path, "w", encoding="utf-8") as f:
+            f.write(rendered_template)
 
     def _create_launch(self):
         """Create a launch file for the project."""
-        process = (
-            self.database.process
-            if isinstance(self.database, LocalDatabase) and self.database.process
-            else OdoobinProcess(self.database, version=self.version).with_edition("enterprise")
-        )
-
-        def run_config(shell: bool = False):
-            title = "Shell" if shell else "Run"
-            return {
-                "name": title,
-                "type": "debugpy",
-                "request": "launch",
-                "subProcess": True,
-                "justMyCode": True,
-                "console": "integratedTerminal",
-                "consoleName": f"Odev {title} ({self.database.name})",
-                "cwd": self.path.as_posix(),
-                "program": self.database.odev.executable.as_posix(),
-                "python": process.venv.python.as_posix(),
-                "args": [
-                    title.lower(),
-                    self.database.name,
-                    "--log-handler=odoo.addons.base.models.ir_attachment:WARNING",
-                    "--limit-time-cpu=0",
-                    "--limit-time-real=0",
-                ],
-            }
-
-        launch_config = {
-            "version": "0.2.0",
-            "configurations": [
-                run_config(),
-                run_config(True),
-                {
-                    "name": "Attach Debugger",
-                    "type": "debugpy",
-                    "request": "attach",
-                    "processId": "${command:pickProcess}",
-                },
-            ],
-        }
-
-        self.launch_path.write_text(json.dumps(launch_config, indent=4))
+        rendered_template = self._get_rendered_template("launch.jinja")
+        with open(self.launch_path, "w", encoding="utf-8") as f:
+            f.write(rendered_template)
 
     def _create_tasks(self):
         """Create a tasks file for the project."""
+        rendered_template = self._get_rendered_template(
+            "tasks.jinja",
+            DB_VERSION=self.version,
+        )
+        with open(self.tasks_path, "w", encoding="utf-8") as f:
+            f.write(rendered_template)
 
-        tasks_config = {
-            "version": "2.0.0",
-            "tasks": [],
+    def _create_jsconfig(self):
+        """Create JS config file to provide intellisense JavaScript."""
+        root = self.odoo_path.resolve()
+
+        addon_dirs = [
+            root / "addons",
+            root / "odoo" / "addons",
+            root / "enterprise",
+            self.path,
+        ]
+
+        paths_map = {
+            "@odoo/owl": ["odoo/addons/web/static/src/@types/owl.d.ts"],
+            "@odoo/hoot": ["odoo/addons/web/static/src/@types/hoot.d.ts"],
+            "@odoo/hoot-dom": ["odoo/addons/web/static/src/@types/hoot.d.ts"],
         }
 
-        self.tasks_path.write_text(json.dumps(tasks_config, indent=4))
+        for addon_dir in addon_dirs:
+            if not addon_dir.exists():
+                continue
+            for module in addon_dir.iterdir():
+                if module.is_dir():
+                    static_src_path = module / "static" / "src"
+                    if static_src_path.exists():
+                        rel_path = os.path.relpath(static_src_path, root)
+                        paths_map[f"@{module.name}/*"] = [f"{rel_path}/*"]
+
+        modules_mapping = dict(sorted(paths_map.items()))
+
+        rendered_template = self._get_rendered_template(
+            "jsconfig.jinja",
+            ODOO_PATH=self.odoo_path,
+            JS_MODULES_PATHS=json.dumps(modules_mapping, indent=4),
+        )
+        with open(self.path / "jsconfig.json", "w", encoding="utf-8") as f:
+            f.write(rendered_template)
