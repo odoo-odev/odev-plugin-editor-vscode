@@ -93,7 +93,9 @@ class VSCodeEditor(Editor):
             with progress.spinner(f"Configuring {self.display_name} workspace for Odoo {self.version}"):
                 self.workspace_directory.mkdir(parents=True, exist_ok=True)
                 self._create_version_workspace()
-                logger.info(f"Created {self.display_name} workspace for Odoo {self.version}\n  Workspace: {self.workspace_path}")
+                logger.info(
+                    f"Created {self.display_name} workspace for Odoo {self.version}\n  Workspace: {self.workspace_path}"
+                )
             return None
 
         return logger.warning(
