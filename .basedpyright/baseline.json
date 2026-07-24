@@ -1,0 +1,54 @@
+{
+  "files": {
+    "./common/editor_vscode.py": [
+      {
+        "code": "reportOperatorIssue",
+        "range": {
+          "endColumn": 80,
+          "lineCount": 1,
+          "startColumn": 22
+        }
+      },
+      {
+        "code": "reportAttributeAccessIssue",
+        "range": {
+          "endColumn": 80,
+          "lineCount": 1,
+          "startColumn": 72
+        }
+      },
+      {
+        "code": "reportAttributeAccessIssue",
+        "range": {
+          "endColumn": 40,
+          "lineCount": 1,
+          "startColumn": 36
+        }
+      },
+      {
+        "code": "reportArgumentType",
+        "range": {
+          "endColumn": 46,
+          "lineCount": 1,
+          "startColumn": 33
+        }
+      },
+      {
+        "code": "reportOperatorIssue",
+        "range": {
+          "endColumn": 78,
+          "lineCount": 1,
+          "startColumn": 20
+        }
+      },
+      {
+        "code": "reportAttributeAccessIssue",
+        "range": {
+          "endColumn": 78,
+          "lineCount": 1,
+          "startColumn": 70
+        }
+      }
+    ]
+  }
+}
