@@ -17,6 +17,4 @@ jobs:
 
   unit-tests:
     name: unit-tests
-    uses: odoo-odev/odev/.github/workflows/plugin-tests.yml@imp-plugin-tests-workflow
-    with:
-      odev-ref: imp-plugin-tests-workflow
+    uses: odoo-odev/odev/.github/workflows/plugin-tests.yml@beta
