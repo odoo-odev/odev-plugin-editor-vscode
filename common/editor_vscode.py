@@ -68,6 +68,16 @@ class VSCodeEditor(Editor):
         """The path to the tasks file."""
         return self.workspace_directory / "tasks.json"
 
+    @property
+    def odoo_path(self) -> Path:
+        """The path to the Odoo worktrees used by the database.
+
+        A database that was never run has no worktree assigned yet, it will use the one of its version.
+        """
+        worktree = self.database.worktree if isinstance(self.database, LocalDatabase) else None
+
+        return self.database.odev.worktrees_path / (worktree or str(self.database.version))
+
     def configure(self):
         """Configure VSCode to work with the database, or to browse a bare Odoo version."""
         if isinstance(self.database, LocalDatabase):
@@ -107,15 +117,34 @@ class VSCodeEditor(Editor):
         template = self.templates.get_template(template_name)
         return template.render(kwargs)
 
+    def _default_modules(self) -> str:
+        """Find the modules to install or update by default when running the database from the editor.
+
+        The suite module named after the database is preferred as it is expected to depend on the rest of the
+        project. Projects without one fall back to every module found at the root of their repository.
+
+        Returns:
+            Comma-separated module names, as expected by odoo-bin.
+        """
+        suite_module = f"{self.database.name}_suite"
+
+        if (self.path / suite_module / "__manifest__.py").is_file():
+            return suite_module
+
+        project_modules = sorted(manifest.parent.name for manifest in self.path.glob("*/__manifest__.py"))
+
+        return ",".join(project_modules) or "base"
+
     def _create_workspace(self):
         """Create a workspace file for the project."""
         rendered_template = self._get_rendered_template(
             "code-workspace.jinja",
             DB_NAME=self.database.name,
-            ODOO_PATH=self.database.odev.worktrees_path / self.database.worktree,
+            ODOO_PATH=self.odoo_path,
             VENV_PATH=self.database.venv.python.as_posix(),
             PYTHON_PATH=PythonEnv().python.as_posix(),
-            ODEV_EXE_PATH="odev",
+            ODEV_EXE_PATH=(self.database.odev.path / "main.py").as_posix(),
+            ODOO_MODULES=self._default_modules(),
         )
         with open(self.workspace_path, "w", encoding="utf-8") as f:
             f.write(rendered_template)
@@ -149,8 +178,8 @@ class VSCodeEditor(Editor):
 
     def _create_jsconfig(self):
         """Create JS config file to provide intellisense JavaScript."""
-        odoo_path = self.database.odev.worktrees_path / self.database.worktree
-        root = Path(odoo_path).resolve()
+        odoo_path = self.odoo_path
+        root = odoo_path.resolve()
 
         addon_dirs = [
             root / "addons",

@@ -1,0 +1,20 @@
+name: tests
+
+# Runs the unit tests of the plugin from a checkout of odev, see the reusable workflow in odoo-odev/odev.
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+  push:
+    branches:
+      - beta
+  workflow_dispatch:
+
+jobs:
+
+  unit-tests:
+    name: unit-tests
+    uses: odoo-odev/odev/.github/workflows/plugin-tests.yml@beta
